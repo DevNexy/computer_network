@@ -1,49 +1,63 @@
+#include <inttypes.h>
+#include <sys/un.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <unistd.h>
-#include <netdb.h>
-#include <netinet/in.h>
+#include <sys/stat.h>
+#include <sys/un.h>
 #include <arpa/inet.h>
-#include <stdlib.h>
+#include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <netinet/in.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <string.h>
-#include <sys/select.h>
 
+
+#define IP "127.0.0.1"
+#define BUFSIZ 1024
 #define PORTNUM 9001
 
-int main(void){
-	int sd;
-	char buf[256];
-	struct sockaddr_in sin;
+void handler(int sig)
+{
+    close(0);
+}
 
-	memset((char *)&sin, '\0', sizeof(sin));
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(PORTNUM);
-	sin.sin_addr.s_addr = inet_addr("127.0.0.1");
+int main()
+{
+    int sock, len;
+    struct sockaddr_in server_addr;
+    struct sockaddr sock_addr;
+    char buf[BUFSIZ] = {0,};
 
-	if((sd=socket(AF_INET, SOCK_STREAM, 0))==-1){
-		perror("socket");
-		exit(1);
-	}
-	if(connect(sd,(struct sockaddr *)&sin, sizeof(sin))){
-		perror("connect");
-		exit(1);
-	}
-	while(1){
-        memset(buf, '\0', sizeof(buf));
-		printf("Enter message: ");
-		fgets(buf, BUFSIZ, stdin);
-		
-		if(send(sd, buf, strlen(buf)+1, 0)== -1){
-			perror("send");
-			exit(1);
-		}
-        if(!strcmp(buf,"quit\n"))
-			break;
-		// printf("From Server: %s\n",buf);
-		// memset(buf, '\0', sizeof(buf));
-	}
-	close(sd);
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = inet_addr(IP);
+    server_addr.sin_port = PORTNUM;
+    sock = socket(AF_INET, SOCK_STREAM, 0);
 
-	return 0;
+    if (sock == -1)
+    {
+        printf("Error");
+    }
+    if (connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1)
+    {
+        perror("Connect Error");
+        exit(1);
+    }
+    while (1)
+    {
+        memset(buf, 0, BUFSIZ);
+        printf("Message : ");
+        gets(buf);
+        if (strncmp(buf, "quit", strlen("quit")) == 0)
+        {
+            break;
+        }
+        if (send(sock, buf, BUFSIZ, 0) == -1)
+        {
+            perror("Send");
+            exit(1);
+        }
+    }
+    return 0;
 }
